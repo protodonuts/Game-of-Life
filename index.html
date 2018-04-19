@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>
+			Game of Life
+		</title>
+		<style>
+			html {
+				background: black;
+			}
+			* {
+				color: rgb(0, 119, 255)
+			}
+		</style>
+	</head>
+	<body>
+	<p>
+		<canvas id="cvs"></canvas>
+	</p>
+	<p>
+		stop
+		<input type="checkbox" id="cnt">
+		<button onclick="cnt.dispatchEvent(new Event('change'));">step</button>
+	
+		<input id="randrate" type="range" min="0" max="1" step="0.01" value=".2" 
+		onchange="randrateDisplay.innerText = this.value">
+
+		<span id="randrateDisplay">0.2</span>
+		<button onclick="randomizeCells(randrate.value)">randomize</button>
+	</p>
+	<div id="panel">
+		<p>
+			<input type="color" v-model="colorAlive">
+			<input type="color" v-model="colorDead">
+		</p>
+		<p>
+			<span v-for="(item, index) in ruleAlive">
+				{{index}}
+				<input type="checkbox" v-model="ruleAlive[index]">
+			</span>
+		</p>
+		<p>
+			<span v-for="(item, index) in ruleDead">
+				{{index}}
+				<input type="checkbox" v-model="ruleDead[index]">
+			</span>
+		</p>
+		<p>
+			<input type="number" min="20" max="10000" v-model.number="interval">
+		</p>
+	</div>
+	<script src="https://cdn.jsdelivr.net/npm/vue"></script>
+	<script>
+		const panel = new Vue({
+			el: '#panel',
+			data: {
+				colorAlive: '#AAAAAA',
+				colorDead: '#000000',
+
+				ruleAlive: [
+					false,
+					false,
+					true,
+					true,
+					false,
+					false,
+					false,
+					false,
+					false,
+				],
+				ruleDead: [
+					false,
+					false,
+					false,
+					true,
+					false,
+					false,
+					false,
+					false,
+					false,
+				],
+				interval: 100,
+			}
+		})
+	</script>
+	<script>
+		const canvasWidth = 1500;
+		const canvasHeight = 700;
+		const cellSize = 5;
+
+		cvs.width = canvasWidth;
+		cvs.height = canvasHeight;
+		const cxt = cvs.getContext('2d');
+
+		const FURTHER_NEIBORHOOD = [
+			[0, -1],
+			[-1, -1],
+			[-1, 0],
+			[-1, 1],
+		]
+		const NEIBORHOOD = [
+			[0, 1],
+			[1, 1],
+			[1, 0],
+			[1, -1],
+		]
+
+		const rowCount = Math.ceil(canvasHeight / cellSize);
+		const colCount = Math.ceil(canvasWidth / cellSize);
+
+		let cells;
+		function randomizeCells(r = 0.2) {
+			cells = [];
+			for (let i = 0; i < rowCount; i++) {
+				const row = [];
+				for (let j = 0; j < colCount; j++) {
+					row.push([
+						false,
+						Math.random() < r,
+						]);
+				}
+				cells.push(row);
+			}
+		}
+		randomizeCells();
+
+		const delay = i => new Promise(function (r) {setTimeout(r, i);});
+		
+		(async function () {
+			while (true) {
+				if (cnt.checked) {
+					await new Promise(resolve => {
+						cnt.addEventListener('change', function a() {
+							cnt.removeEventListener('change', a);
+							resolve();
+						})
+					});
+				}
+				const COLOR_ALIVE = panel.colorAlive;
+				const COLOR_DEAD = panel.colorDead;
+				const RULE_ALIVE = panel.ruleAlive.slice();
+				const RULE_DEAD = panel.ruleDead.slice();
+
+
+				for (let i = 0; i < rowCount; i++) {
+					for (let j = 0; j < colCount; j++) {
+						const cell = cells[i][j];
+
+						cxt.fillStyle = cell[0] ? COLOR_ALIVE : COLOR_DEAD;
+						cxt.fillRect(cellSize * j, cellSize * i, cellSize, cellSize);
+
+						let env = 0;
+						for (let delta of FURTHER_NEIBORHOOD) {
+							const row = i + delta[0];
+							const col = j + delta[1];
+							if (row >= rowCount || row < 0 || col >= colCount || col < 0) {
+								continue;
+							}
+							cells[row][col][0] && env++;
+						}
+						for (let delta of NEIBORHOOD) {
+							const row = i + delta[0];
+							const col = j + delta[1];
+							if (row >= rowCount || row < 0 || col >= colCount || col < 0) {
+								continue;
+							}
+							cells[row][col][1] && env++;
+						}
+
+						if (cell[1]) {
+							cell.push(RULE_ALIVE[env]);
+						} else {
+							cell.push(RULE_DEAD[env]);
+						}
+						cell.shift();
+					}
+				}
+				await delay(panel.interval);
+			}
+		})();
+
+	</script>
+	</body>
+</html>
+
